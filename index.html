@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assignment Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: month grid on the left, add form and selected-day list on the right.
+   On phones the add form comes first (quick entry in class), then the grid, then the day list. */
+:root{
+  color-scheme:light;
+  --bg:#EDEFF3; --surface:#FFFFFF; --surface-2:#F4F5F8;
+  --ink:#14171D; --muted:#596070; --line:#D3D8E0; --line-strong:#B4BCC9;
+  --focus:#2F54E0; --btn:#14171D; --btn-ink:#FFFFFF; --danger:#B3261E;
+  --today:#14171D; --today-ink:#FFFFFF;
+  --c1100:#D6402F; --c1113:#E0820B; --c1510:#C9A100; --c1537:#2E9E57;
+  --c1712:#109DA8; --c1800:#3A62E8; --c1116:#8E4FD3;
+  --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#101318; --surface:#181C23; --surface-2:#1E232B;
+    --ink:#E9ECF2; --muted:#9AA2B2; --line:#2B313B; --line-strong:#434B5A;
+    --focus:#8EA4FF; --btn:#E9ECF2; --btn-ink:#101318; --danger:#FF8A80;
+    --today:#E9ECF2; --today-ink:#101318;
+    --c1100:#FF7B6B; --c1113:#FFB04A; --c1510:#F2D13F; --c1537:#5FD08A;
+    --c1712:#4FD1DA; --c1800:#7F9CFF; --c1116:#BE92F5;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.45 var(--font-body);
+  padding-block:20px 44px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:1180px;margin:0 auto}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.k-1100{--c:var(--c1100)} .k-1113{--c:var(--c1113)} .k-1510{--c:var(--c1510)}
+.k-1537{--c:var(--c1537)} .k-1712{--c:var(--c1712)} .k-1800{--c:var(--c1800)}
+.k-1116{--c:var(--c1116)}
+
+.gate{max-width:420px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.gate p{margin:0;color:var(--muted)}
+
+.app{
+  display:grid; gap:20px 24px; align-items:start;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"add" "cal" "day";
+}
+@media (min-width:900px){
+  .app{
+    grid-template-columns:minmax(0,1fr) 340px;
+    grid-template-rows:auto 1fr;
+    grid-template-areas:"cal add" "cal day";
+  }
+}
+.cal{grid-area:cal;min-width:0}
+.add{grid-area:add}
+.day{grid-area:day}
+
+.head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:6px}
+h1{font:700 clamp(28px,5vw,40px)/1.05 var(--font-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.nav{display:flex;gap:6px;flex-wrap:wrap}
+.btn{
+  font:inherit;font-weight:600;font-size:14px;min-height:40px;padding:8px 14px;border-radius:6px;
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer;
+}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.btn.primary:hover{opacity:.9}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.icon{padding:8px 12px;min-width:40px}
+
+.sub{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 12px;color:var(--muted);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px}
+.legend span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+
+.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:12px;border:1px solid var(--danger);border-radius:6px;background:var(--surface)}
+.confirm p{margin:0;flex:1 1 220px}
+
+.dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-bottom:6px}
+.dow span{font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-left:6px}
+.grid{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;
+}
+.cell{
+  appearance:none;border:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;
+  background:var(--surface);padding:6px;min-height:58px;min-width:0;
+  display:flex;flex-direction:column;gap:5px;
+}
+.cell:hover{background:var(--surface-2)}
+.cell.out{background:var(--surface-2);color:var(--muted)}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--ink)}
+.cell:focus-visible{outline-offset:-3px}
+.num{font:500 12px var(--font-mono);width:22px;height:22px;display:grid;place-items:center;border-radius:50%}
+.cell.today .num{background:var(--today);color:var(--today-ink)}
+.dots{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.dots .done{opacity:.35}
+.dots small{font:500 10px var(--font-mono);color:var(--muted)}
+.chips{display:none;flex-direction:column;gap:3px;min-width:0}
+.chip{
+  display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;line-height:1.2;padding:3px 5px;border-radius:4px;
+  background:color-mix(in srgb,var(--c) 22%,var(--surface));color:var(--ink);
+}
+.cell.out .chip{opacity:.7}
+.chip .n{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.done .n{text-decoration:line-through;opacity:.6}
+.more{font-size:11px;color:var(--muted);padding-left:2px}
+@media (min-width:640px){
+  .cell{min-height:104px}
+  .chips{display:flex}
+  .dots{display:none}
+}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+h2{font:600 18px/1.2 var(--font-display);letter-spacing:-.01em;margin:0 0 12px}
+.field{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;border:0;padding:0;min-width:0}
+.field>label,.field>legend{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:0}
+input[type=text],input[type=date],input[type=time],input[type=url],textarea{
+  font:inherit;width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid var(--line-strong);
+  border-radius:6px;background:var(--surface);color:var(--ink);
+}
+textarea{resize:vertical;min-height:70px}
+details.more-fields{margin:0 0 14px}
+details.more-fields summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:4px 0}
+details.more-fields .field{margin:10px 0 0}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{position:relative;display:inline-flex}
+.pill input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.pill span{
+  display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 11px;border-radius:6px;
+  border:1px solid var(--line-strong);background:var(--surface-2);font-size:14px;font-weight:500;
+}
+.pill.time span{--c:var(--ink)}
+.pill input:checked+span{background:color-mix(in srgb,var(--c) 26%,var(--surface));box-shadow:inset 0 0 0 2px var(--c);border-color:transparent;font-weight:600}
+.pill input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.custom{margin-top:6px}
+.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.status{font-size:13px;color:var(--muted);min-height:1.4em}
+
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;
+  padding:10px;border-radius:6px;background:color-mix(in srgb,var(--c) 14%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));
+}
+.item input[type=checkbox]{width:20px;height:20px;margin:2px 0 0;accent-color:var(--c);cursor:pointer}
+.item .name{font-weight:600;overflow-wrap:anywhere}
+.item.done .name{text-decoration:line-through;color:var(--muted);font-weight:500}
+.item .desc{margin:6px 0 0;font-size:13px;overflow-wrap:anywhere;white-space:pre-wrap}
+.item .link{display:inline-block;margin-top:4px;font-size:13px;color:var(--focus);overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;color:var(--muted);margin-top:2px}
+.meta b{color:var(--ink);font-weight:600}
+.meta .t{font-family:var(--font-mono)}
+.btns{display:flex;flex-direction:column;gap:2px;align-items:flex-end}
+.del{font:inherit;font-size:12px;font-weight:600;color:var(--muted);background:none;border:1px solid transparent;border-radius:6px;padding:4px 8px;cursor:pointer;min-height:32px}
+.del:hover{color:var(--danger);border-color:var(--danger)}
+.del.edit:hover{color:var(--ink);border-color:var(--line-strong)}
+.empty{margin:0;color:var(--muted)}
+.store{margin:14px 0 0;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Shown when nobody is signed in -->
+  <section class="panel gate" id="gate" hidden>
+    <h1>Assignment Calendar</h1>
+    <p>Sign in with Google to see your assignments.</p>
+    <button type="button" class="btn primary" id="signIn">Sign in with Google</button>
+    <p class="status" id="authMsg" role="alert"></p>
+  </section>
+
+  <!-- Shown after sign-in -->
+  <div class="app" id="appShell" hidden>
+    <section class="cal" aria-label="Month calendar">
+      <div class="head">
+        <h1 id="monthTitle">Month</h1>
+        <div class="nav">
+          <button type="button" class="btn icon" id="prev" aria-label="Previous month">&larr;</button>
+          <button type="button" class="btn" id="today">Today</button>
+          <button type="button" class="btn icon" id="next" aria-label="Next month">&rarr;</button>
+          <button type="button" class="btn" id="clear">Clear month</button>
+        </div>
+      </div>
+      <div class="sub">
+        <span id="summary"></span>
+        <div class="legend" id="legend" aria-label="Class colours"></div>
+      </div>
+      <div class="confirm" id="confirmBar" hidden>
+        <p id="confirmText"></p>
+        <button type="button" class="btn danger" id="confirmYes">Yes, clear them</button>
+        <button type="button" class="btn" id="confirmNo">Keep them</button>
+      </div>
+      <div class="dow" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <form class="panel add" id="addForm" novalidate>
+      <h2 id="formTitle">Add an assignment</h2>
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" maxlength="80" autocomplete="off" placeholder="e.g. Lab 3 submission" required>
+      </div>
+      <fieldset class="field">
+        <legend>Class</legend>
+        <div class="pills" id="classPills"></div>
+      </fieldset>
+      <div class="field">
+        <label for="date">Due date</label>
+        <input type="date" id="date" required>
+      </div>
+      <fieldset class="field">
+        <legend>Due time</legend>
+        <div class="pills">
+          <label class="pill time"><input type="radio" name="tmode" value="23:59" checked><span>11:59 PM</span></label>
+          <label class="pill time"><input type="radio" name="tmode" value="18:00"><span>6:00 PM</span></label>
+          <label class="pill time"><input type="radio" name="tmode" value="custom"><span>Custom</span></label>
+        </div>
+        <div class="custom" id="customWrap" hidden>
+          <label for="customTime" class="status" style="display:block;margin-bottom:4px">Pick a time</label>
+          <input type="time" id="customTime">
+        </div>
+      </fieldset>
+      <details class="more-fields" id="moreFields">
+        <summary>Description and link (optional)</summary>
+        <div class="field">
+          <label for="desc">Description</label>
+          <textarea id="desc" maxlength="500" placeholder="Notes, what to hand in, where to submit"></textarea>
+        </div>
+        <div class="field">
+          <label for="link">Link</label>
+          <input type="url" id="link" inputmode="url" autocomplete="off" placeholder="https://">
+        </div>
+      </details>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="submitBtn">Add assignment</button>
+        <button type="button" class="btn" id="cancelEdit" hidden>Cancel</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+
+    <section class="panel day" aria-label="Selected day">
+      <h2 id="dayTitle">Day</h2>
+      <ul class="list" id="dayList"></ul>
+      <p class="empty" id="dayEmpty" hidden>Nothing due on this day.</p>
+      <p class="store"><span id="who"></span><button type="button" class="del" id="signOut">Sign out</button></p>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+/* ---------- 1. Firebase setup ---------- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ---------- 2. Small helpers ---------- */
+const CLASSES = [
+  { id: '1100', label: 'COMP 1100' },
+  { id: '1113', label: 'COMP 1113' },
+  { id: '1510', label: 'COMP 1510' },
+  { id: '1537', label: 'COMP 1537' },
+  { id: '1712', label: 'COMP 1712' },
+  { id: '1800', label: 'COMP 1800' },
+  { id: '1116', label: 'COMM 1116' }
+];
+const LOCALE = 'en-CA';
+const $ = (id) => document.getElementById(id);
+const pad = (n) => (n < 10 ? '0' : '') + n;
+const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parse = (s) => { const p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); };
+const classLabel = (id) => { const c = CLASSES.find((x) => x.id === id); return c ? c.label : id; };
+function fmtTime(t) {
+  const h = +t.slice(0, 2), m = t.slice(3, 5);
+  return (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function newId() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+const now = new Date();
+const todayStr = ymd(now);
+const state = { items: [], view: new Date(now.getFullYear(), now.getMonth(), 1), sel: todayStr };
+let uid = null;        // the signed-in user's id
+let unsubscribe = null; // stops the live Firestore listener
+let editId = null;     // id of the assignment being edited, if any
+
+function setStatus(msg) {
+  $('status').textContent = msg || '';
+  clearTimeout(setStatus.t);
+  if (msg) setStatus.t = setTimeout(() => { $('status').textContent = ''; }, 4000);
+}
+
+/* ---------- 3. Reading and writing Firestore ----------
+   Every assignment is its own document at: users/{uid}/assignments/{id} */
+const itemRef = (id) => doc(db, 'users', uid, 'assignments', id);
+
+function cleanItem(id, d) {
+  return {
+    id,
+    name: String(d.name || ''),
+    cls: String(d.cls || ''),
+    date: String(d.date || ''),
+    time: /^\d{2}:\d{2}$/.test(d.time || '') ? d.time : '23:59',
+    done: !!d.done,
+    desc: typeof d.desc === 'string' ? d.desc : '',
+    link: typeof d.link === 'string' ? d.link : ''
+  };
+}
+function saveError(e) { setStatus('Could not save: ' + (e.code || e.message)); }
+function saveItem(item) {
+  const { id, ...data } = item;          // the id is the document name, not a field
+  return setDoc(itemRef(id), data).catch(saveError);
+}
+function removeItem(id) { return deleteDoc(itemRef(id)).catch(saveError); }
+
+/* ---------- 4. Calendar logic ---------- */
+function sortItems(a, b) {
+  return a.date < b.date ? -1 : a.date > b.date ? 1 :
+    a.time < b.time ? -1 : a.time > b.time ? 1 :
+    a.name.localeCompare(b.name);
+}
+const monthKey = () => state.view.getFullYear() + '-' + pad(state.view.getMonth() + 1);
+const monthName = () => state.view.toLocaleDateString(LOCALE, { month: 'long' });
+
+function setView(d) {
+  state.view = new Date(d.getFullYear(), d.getMonth(), 1);
+  const inMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth();
+  state.sel = inMonth ? todayStr : ymd(state.view);
+  $('date').value = state.sel;
+  closeConfirm();
+  render();
+}
+function select(dateStr) {
+  state.sel = dateStr;
+  $('date').value = dateStr;
+  const d = parse(dateStr);
+  if (d.getMonth() !== state.view.getMonth() || d.getFullYear() !== state.view.getFullYear()) {
+    state.view = new Date(d.getFullYear(), d.getMonth(), 1);
+    closeConfirm();
+  }
+  render();
+}
+
+function render() {
+  const key = monthKey();
+  $('monthTitle').textContent = state.view.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
+
+  const byDate = {};
+  state.items.slice().sort(sortItems).forEach((i) => { (byDate[i.date] = byDate[i.date] || []).push(i); });
+
+  const monthItems = state.items.filter((i) => i.date.slice(0, 7) === key);
+  const open = monthItems.filter((i) => !i.done).length;
+  $('summary').textContent = monthItems.length
+    ? monthItems.length + (monthItems.length === 1 ? ' assignment' : ' assignments') + ' this month, ' + open + ' still open'
+    : 'No assignments this month';
+  $('clear').textContent = 'Clear ' + monthName();
+  $('clear').disabled = monthItems.length === 0;
+
+  const grid = $('grid');
+  grid.textContent = '';
+  const first = state.view;
+  const start = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay());
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const weeks = Math.ceil((first.getDay() + daysInMonth) / 7);
+
+  for (let n = 0; n < weeks * 7; n++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + n);
+    const ds = ymd(d);
+    const list = byDate[ds] || [];
+    const cell = el('button', 'cell');
+    cell.type = 'button';
+    cell.setAttribute('data-date', ds);
+    if (d.getMonth() !== first.getMonth()) cell.classList.add('out');
+    if (ds === todayStr) cell.classList.add('today');
+    if (ds === state.sel) { cell.classList.add('sel'); cell.setAttribute('aria-current', 'date'); }
+    cell.setAttribute('aria-label', d.toLocaleDateString(LOCALE, { month: 'long', day: 'numeric' }) + ', ' +
+      (list.length === 1 ? '1 assignment' : list.length + ' assignments'));
+    cell.appendChild(el('span', 'num', String(d.getDate())));
+
+    const chips = el('span', 'chips');
+    list.slice(0, 3).forEach((i) => {
+      const c = el('span', 'chip k-' + i.cls + (i.done ? ' done' : ''));
+      c.appendChild(el('i', 'dot'));
+      c.appendChild(el('span', 'n', i.name));
+      c.title = classLabel(i.cls) + ': ' + i.name + ' at ' + fmtTime(i.time);
+      chips.appendChild(c);
+    });
+    if (list.length > 3) chips.appendChild(el('span', 'more', '+' + (list.length - 3) + ' more'));
+    cell.appendChild(chips);
+
+    const dots = el('span', 'dots');
+    list.slice(0, 6).forEach((i) => dots.appendChild(el('i', 'dot k-' + i.cls + (i.done ? ' done' : ''))));
+    if (list.length > 6) dots.appendChild(el('small', null, '+'));
+    cell.appendChild(dots);
+    grid.appendChild(cell);
+  }
+
+  // selected day
+  $('dayTitle').textContent = parse(state.sel).toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric' });
+  const ul = $('dayList');
+  ul.textContent = '';
+  const dayItems = byDate[state.sel] || [];
+  $('dayEmpty').hidden = dayItems.length > 0;
+  dayItems.forEach((i) => {
+    const li = el('li', 'item k-' + i.cls + (i.done ? ' done' : ''));
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = i.done;
+    cb.setAttribute('data-id', i.id);
+    cb.setAttribute('aria-label', 'Mark ' + i.name + ' as done');
+    li.appendChild(cb);
+
+    const body = el('div');
+    body.appendChild(el('div', 'name', i.name));
+    const meta = el('div', 'meta');
+    meta.appendChild(el('b', null, classLabel(i.cls)));
+    meta.appendChild(el('span', 't', 'Due ' + fmtTime(i.time)));
+    body.appendChild(meta);
+    if (i.desc) body.appendChild(el('p', 'desc', i.desc));
+    if (i.link && /^https?:\/\//i.test(i.link)) {
+      const a = el('a', 'link', i.link.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
+      a.href = i.link;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      body.appendChild(a);
+    }
+    li.appendChild(body);
+
+    const btns = el('div', 'btns');
+    const ed = el('button', 'del edit', 'Edit');
+    ed.type = 'button';
+    ed.setAttribute('data-edit', i.id);
+    ed.setAttribute('aria-label', 'Edit ' + i.name);
+    btns.appendChild(ed);
+    const del = el('button', 'del', 'Delete');
+    del.type = 'button';
+    del.setAttribute('data-del', i.id);
+    del.setAttribute('aria-label', 'Delete ' + i.name);
+    btns.appendChild(del);
+    li.appendChild(btns);
+    ul.appendChild(li);
+  });
+}
+
+/* ---------- 5. One-time page setup ---------- */
+CLASSES.forEach((c, idx) => {
+  const s = el('span', 'k-' + c.id);
+  s.appendChild(el('i', 'dot'));
+  s.appendChild(document.createTextNode(c.label));
+  $('legend').appendChild(s);
+
+  const lab = el('label', 'pill k-' + c.id);
+  const r = document.createElement('input');
+  r.type = 'radio'; r.name = 'cls'; r.value = c.id;
+  if (idx === 0) r.required = true;
+  lab.appendChild(r);
+  const sp = el('span');
+  sp.appendChild(el('i', 'dot'));
+  sp.appendChild(document.createTextNode(c.label));
+  lab.appendChild(sp);
+  $('classPills').appendChild(lab);
+});
+
+/* ---------- 6. Events ---------- */
+$('grid').addEventListener('click', (e) => {
+  const b = e.target.closest('.cell');
+  if (b) select(b.getAttribute('data-date'));
+});
+$('prev').addEventListener('click', () => setView(new Date(state.view.getFullYear(), state.view.getMonth() - 1, 1)));
+$('next').addEventListener('click', () => setView(new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1)));
+$('today').addEventListener('click', () => setView(new Date(now.getFullYear(), now.getMonth(), 1)));
+
+function closeConfirm() { $('confirmBar').hidden = true; }
+$('clear').addEventListener('click', () => {
+  const n = state.items.filter((i) => i.date.slice(0, 7) === monthKey()).length;
+  if (!n) return;
+  $('confirmText').textContent = 'Delete all ' + n + (n === 1 ? ' assignment' : ' assignments') + ' in ' + monthName() + '? This cannot be undone.';
+  $('confirmBar').hidden = false;
+  $('confirmNo').focus();
+});
+$('confirmNo').addEventListener('click', () => { closeConfirm(); $('clear').focus(); });
+$('confirmYes').addEventListener('click', () => {
+  const key = monthKey();
+  const batch = writeBatch(db);   // delete the whole month in one go
+  state.items.filter((i) => i.date.slice(0, 7) === key).forEach((i) => batch.delete(itemRef(i.id)));
+  batch.commit().catch(saveError);
+  closeConfirm();
+  $('clear').focus();
+});
+
+$('dayList').addEventListener('change', (e) => {
+  const id = e.target.getAttribute('data-id');
+  const item = state.items.find((i) => i.id === id);
+  if (item) saveItem({ ...item, done: e.target.checked });
+});
+$('dayList').addEventListener('click', (e) => {
+  const eb = e.target.closest('[data-edit]');
+  if (eb) { startEdit(eb.getAttribute('data-edit')); return; }
+  const b = e.target.closest('[data-del]');
+  if (!b) return;
+  const id = b.getAttribute('data-del');
+  if (editId === id) cancelEdit();
+  removeItem(id);
+});
+
+$('date').addEventListener('change', function () {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(this.value)) select(this.value);
+});
+function syncTime() {
+  const custom = document.querySelector('input[name="tmode"]:checked').value === 'custom';
+  $('customWrap').hidden = !custom;
+  $('customTime').required = custom;
+  if (custom) $('customTime').focus();
+}
+document.querySelectorAll('input[name="tmode"]').forEach((r) => r.addEventListener('change', syncTime));
+
+function normalizeLink(v) {
+  v = (v || '').trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+  try {
+    const u = new URL(v);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.indexOf('.') > 0 ? u.href : '';
+  } catch (e) { return ''; }
+}
+function setTimeMode(time) {
+  let matched = false;
+  document.querySelectorAll('input[name="tmode"]').forEach((r) => {
+    if (r.value === time) { r.checked = true; matched = true; }
+  });
+  if (!matched) {
+    document.querySelector('input[name="tmode"][value="custom"]').checked = true;
+    $('customTime').value = time;
+  }
+  $('customWrap').hidden = matched;
+  $('customTime').required = !matched;
+}
+function startEdit(id) {
+  const item = state.items.find((i) => i.id === id);
+  if (!item) return;
+  editId = id;
+  $('formTitle').textContent = 'Edit assignment';
+  $('submitBtn').textContent = 'Save changes';
+  $('cancelEdit').hidden = false;
+  $('name').value = item.name;
+  const r = document.querySelector('input[name="cls"][value="' + item.cls + '"]');
+  if (r) r.checked = true;
+  setTimeMode(item.time);
+  $('desc').value = item.desc;
+  $('link').value = item.link;
+  $('moreFields').open = !!(item.desc || item.link);
+  select(item.date);
+  $('addForm').scrollIntoView({ block: 'nearest' });
+  $('name').focus();
+}
+function cancelEdit() {
+  editId = null;
+  $('formTitle').textContent = 'Add an assignment';
+  $('submitBtn').textContent = 'Add assignment';
+  $('cancelEdit').hidden = true;
+  $('name').value = '';
+  $('desc').value = '';
+  $('link').value = '';
+  $('moreFields').open = false;
+  const cls = document.querySelector('input[name="cls"]:checked');
+  if (cls) cls.checked = false;
+  document.querySelector('input[name="tmode"][value="23:59"]').checked = true;
+  $('customWrap').hidden = true;
+  $('customTime').required = false;
+  $('customTime').value = '';
+}
+$('cancelEdit').addEventListener('click', cancelEdit);
+
+$('addForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!uid) return;
+  const name = $('name').value.trim();
+  const clsEl = document.querySelector('input[name="cls"]:checked');
+  const date = $('date').value;
+  const mode = document.querySelector('input[name="tmode"]:checked').value;
+  const time = mode === 'custom' ? $('customTime').value : mode;
+  if (!name) { setStatus('Type a name for the assignment.'); $('name').focus(); return; }
+  if (!clsEl) { setStatus('Pick a class.'); return; }
+  if (!date) { setStatus('Pick a due date.'); $('date').focus(); return; }
+  if (!time) { setStatus('Pick a custom time.'); $('customTime').focus(); return; }
+  const desc = $('desc').value.trim();
+  const rawLink = $('link').value.trim();
+  const link = normalizeLink(rawLink);
+  if (rawLink && !link) { $('moreFields').open = true; setStatus('That link does not look right.'); $('link').focus(); return; }
+
+  const shortDate = parse(date).toLocaleDateString(LOCALE, { month: 'short', day: 'numeric' });
+  const base = { name, cls: clsEl.value, date, time, desc, link };
+
+  if (editId) {
+    const old = state.items.find((i) => i.id === editId);
+    saveItem({ ...base, id: editId, done: old ? old.done : false });
+    cancelEdit();
+    select(date);
+    setStatus('Saved changes for ' + shortDate + '.');
+    return;
+  }
+  saveItem({ ...base, id: newId(), done: false });
+  $('name').value = '';
+  $('desc').value = '';
+  $('link').value = '';
+  $('moreFields').open = false;
+  select(date);
+  setStatus('Added to ' + shortDate + ' at ' + fmtTime(time) + '.');
+  $('name').focus();
+});
+
+/* ---------- 7. Sign in, sign out, and live data ---------- */
+$('signIn').addEventListener('click', async () => {
+  $('authMsg').textContent = '';
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    $('authMsg').textContent = 'Sign-in failed (' + (e.code || e.message) + ').';
+  }
+});
+$('signOut').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  if (!user) {
+    uid = null;
+    state.items = [];
+    $('appShell').hidden = true;
+    $('gate').hidden = false;
+    return;
+  }
+  uid = user.uid;
+  $('who').textContent = 'Signed in as ' + user.email;
+  $('gate').hidden = true;
+  $('appShell').hidden = false;
+  // Listen to this user's assignments. This runs again every time the data changes.
+  unsubscribe = onSnapshot(
+    collection(db, 'users', uid, 'assignments'),
+    (snap) => {
+      state.items = snap.docs
+        .map((d) => cleanItem(d.id, d.data()))
+        .filter((i) => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
+      render();
+    },
+    (err) => setStatus('Could not load: ' + (err.code || err.message))
+  );
+});
+
+$('date').value = state.sel;
+render();
+</script>
+</body>
+</html>
