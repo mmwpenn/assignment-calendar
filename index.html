@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assignment Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,6 @@
 /* Layout: month grid on the left, add form and selected-day list on the right.
    On phones the add form comes first (quick entry in class), then the grid, then the day list. */
 :root{
-  color-scheme:light;
   --bg:#EDEFF3; --surface:#FFFFFF; --surface-2:#F4F5F8;
   --ink:#14171D; --muted:#596070; --line:#D3D8E0; --line-strong:#B4BCC9;
   --focus:#2F54E0; --btn:#14171D; --btn-ink:#FFFFFF; --danger:#B3261E;
@@ -23,20 +22,28 @@
   --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){
-  :root{
-    color-scheme:dark;
+  :root:not([data-theme="light"]){
     --bg:#101318; --surface:#181C23; --surface-2:#1E232B;
     --ink:#E9ECF2; --muted:#9AA2B2; --line:#2B313B; --line-strong:#434B5A;
     --focus:#8EA4FF; --btn:#E9ECF2; --btn-ink:#101318; --danger:#FF8A80;
     --today:#E9ECF2; --today-ink:#101318;
     --c1100:#FF7B6B; --c1113:#FFB04A; --c1510:#F2D13F; --c1537:#5FD08A;
     --c1712:#4FD1DA; --c1800:#7F9CFF; --c1116:#BE92F5;
+    color-scheme:dark;
   }
 }
+:root[data-theme="dark"]{
+  --bg:#101318; --surface:#181C23; --surface-2:#1E232B;
+  --ink:#E9ECF2; --muted:#9AA2B2; --line:#2B313B; --line-strong:#434B5A;
+  --focus:#8EA4FF; --btn:#E9ECF2; --btn-ink:#101318; --danger:#FF8A80;
+  --today:#E9ECF2; --today-ink:#101318;
+  --c1100:#FF7B6B; --c1113:#FFB04A; --c1510:#F2D13F; --c1537:#5FD08A;
+  --c1712:#4FD1DA; --c1800:#7F9CFF; --c1116:#BE92F5;
+  color-scheme:dark;
+}
 *{box-sizing:border-box}
-[hidden]{display:none!important}
 body{
-  margin:0; background:var(--bg); color:var(--ink);
+  background:var(--bg); color:var(--ink);
   font:15px/1.45 var(--font-body);
   padding-block:20px 44px;
   padding-left:max(16px,env(safe-area-inset-left,0px));
@@ -49,24 +56,72 @@ body{
 .k-1537{--c:var(--c1537)} .k-1712{--c:var(--c1712)} .k-1800{--c:var(--c1800)}
 .k-1116{--c:var(--c1116)}
 
-.gate{max-width:420px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
-.gate p{margin:0;color:var(--muted)}
-
 .app{
   display:grid; gap:20px 24px; align-items:start;
   grid-template-columns:minmax(0,1fr);
-  grid-template-areas:"add" "cal" "day";
+  grid-template-areas:"add" "cal" "day" "sched";
 }
 @media (min-width:900px){
   .app{
     grid-template-columns:minmax(0,1fr) 340px;
-    grid-template-rows:auto 1fr;
-    grid-template-areas:"cal add" "cal day";
+    grid-template-rows:auto 1fr auto;
+    grid-template-areas:"cal add" "cal day" "sched sched";
   }
 }
 .cal{grid-area:cal;min-width:0}
 .add{grid-area:add}
 .day{grid-area:day}
+.sched{grid-area:sched;min-width:0}
+.schednote{margin:-6px 0 14px;font-size:13px;color:var(--muted)}
+.tt{display:grid;grid-template-columns:36px repeat(5,minmax(0,1fr));gap:6px;padding-bottom:6px}
+.tt-col{min-width:0}
+.tt-head{height:26px;font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 2px}
+.tt-col.today .tt-head span{background:var(--today);color:var(--today-ink);padding:3px 8px;border-radius:10px}
+.tt-body{
+  position:relative;border-radius:6px;background-color:var(--surface-2);
+  background-image:linear-gradient(to bottom,var(--line) 1px,transparent 1px);
+  background-size:100% var(--hour);
+}
+.tt-axis .tt-body{background:none}
+.eve{
+  position:absolute;left:0;right:0;border-radius:0 0 6px 6px;
+  background-color:color-mix(in srgb,var(--ink) 4%,var(--surface-2));
+  background-image:linear-gradient(to bottom,var(--line) 1px,transparent 1px);
+  background-size:100% 54px;
+}
+.dueline{position:absolute;left:0;right:0;height:0;z-index:1;pointer-events:none;border-top:1px dashed color-mix(in srgb,var(--ink) 40%,transparent)}
+.dueb{
+  position:absolute;right:2px;z-index:2;display:inline-flex;align-items:center;gap:4px;
+  max-width:calc(100% - 4px);height:16px;padding:0 6px;border-radius:8px;
+  font-size:11px;line-height:1;color:var(--ink);
+  background:color-mix(in srgb,var(--c) 32%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--c) 55%,var(--surface));
+}
+.dueb .dot{width:6px;height:6px}
+.dueb .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dueb.done{opacity:.55}
+.dueb.done .n{text-decoration:line-through}
+.dueb .more{flex:none;font:500 10px var(--font-mono);color:var(--muted)}
+.tt-axis .hr{position:absolute;right:4px;transform:translateY(-50%);font:500 11px var(--font-mono);color:var(--muted)}
+.blk{
+  position:absolute;left:2px;right:2px;overflow:hidden;padding:4px 6px;border-radius:4px;
+  font-size:12px;line-height:1.25;
+  background:color-mix(in srgb,var(--c) 24%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--c) 50%,var(--line));
+}
+.blk .t1{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk .t2{font:400 11px/1.25 var(--font-mono);color:var(--muted)}
+.blk .extra{display:none;margin-top:2px;font-size:12px;color:var(--muted)}
+@media (max-width:859px){
+  .tt{grid-template-columns:minmax(0,1fr);gap:14px}
+  .tt-axis{display:none}
+  .tt-head{height:auto;padding:0 0 6px}
+  .tt-body{height:auto!important;background-image:none;background-color:transparent;display:flex;flex-direction:column;gap:6px}
+  .blk{position:static;top:auto!important;height:auto!important;padding:8px 10px}
+  .blk .t1{white-space:normal}
+  .blk .extra{display:block}
+  .dueb,.dueline,.eve,.wideonly{display:none}
+}
 
 .head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:6px}
 h1{font:700 clamp(28px,5vw,40px)/1.05 var(--font-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
@@ -87,8 +142,16 @@ h1{font:700 clamp(28px,5vw,40px)/1.05 var(--font-display);letter-spacing:-.02em;
 .legend span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
 
-.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:12px;border:1px solid var(--danger);border-radius:6px;background:var(--surface)}
-.confirm p{margin:0;flex:1 1 220px}
+.swatch{width:14px;height:10px;border:1px dashed var(--muted);border-radius:3px;flex:none}
+.chip{border:1px solid transparent}
+.chip.priv{border-style:dashed;border-color:color-mix(in srgb,var(--c) 70%,var(--line-strong))}
+.dueb.priv{border-style:dashed}
+.item.priv{border-style:dashed}
+.tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:0 6px;border-radius:4px;border:1px dashed var(--line-strong);color:var(--muted)}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
+.av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:600 10px/1 var(--font-body);border:1px solid var(--line-strong);color:var(--muted);background:var(--surface)}
+.av.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.who small{font-size:12px;color:var(--muted);margin-left:2px}
 
 .dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-bottom:6px}
 .dow span{font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-left:6px}
@@ -137,6 +200,10 @@ textarea{resize:vertical;min-height:70px}
 details.more-fields{margin:0 0 14px}
 details.more-fields summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:4px 0}
 details.more-fields .field{margin:10px 0 0}
+.item .desc{margin:6px 0 0;font-size:13px;overflow-wrap:anywhere;white-space:pre-wrap}
+.item .link{display:inline-block;margin-top:4px;font-size:13px;color:var(--focus);overflow-wrap:anywhere}
+.btns{display:flex;flex-direction:column;gap:2px;align-items:flex-end}
+.del.edit:hover{color:var(--ink);border-color:var(--line-strong)}
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{position:relative;display:inline-flex}
 .pill input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
@@ -160,32 +227,45 @@ details.more-fields .field{margin:10px 0 0}
 .item input[type=checkbox]{width:20px;height:20px;margin:2px 0 0;accent-color:var(--c);cursor:pointer}
 .item .name{font-weight:600;overflow-wrap:anywhere}
 .item.done .name{text-decoration:line-through;color:var(--muted);font-weight:500}
-.item .desc{margin:6px 0 0;font-size:13px;overflow-wrap:anywhere;white-space:pre-wrap}
-.item .link{display:inline-block;margin-top:4px;font-size:13px;color:var(--focus);overflow-wrap:anywhere}
 .meta{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;color:var(--muted);margin-top:2px}
 .meta b{color:var(--ink);font-weight:600}
 .meta .t{font-family:var(--font-mono)}
-.btns{display:flex;flex-direction:column;gap:2px;align-items:flex-end}
 .del{font:inherit;font-size:12px;font-weight:600;color:var(--muted);background:none;border:1px solid transparent;border-radius:6px;padding:4px 8px;cursor:pointer;min-height:32px}
 .del:hover{color:var(--danger);border-color:var(--danger)}
-.del.edit:hover{color:var(--ink);border-color:var(--line-strong)}
 .empty{margin:0;color:var(--muted)}
 .store{margin:14px 0 0;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Site-only basics (the Claude page supplied these itself) */
+body{margin:0}
+[hidden]{display:none!important}
+.gate{max-width:440px;margin:10vh auto 0;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.gate p{margin:0;color:var(--muted)}
+.banner{display:flex;flex-direction:column;gap:10px;margin:0 0 16px}
+.banner p{margin:0}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Shown when nobody is signed in -->
-  <section class="panel gate" id="gate" hidden>
+  <!-- Shown before sign-in, and to anyone not on the group list -->
+  <section class="panel gate" id="gate">
     <h1>Assignment Calendar</h1>
-    <p>Sign in with Google to see your assignments.</p>
-    <button type="button" class="btn primary" id="signIn">Sign in with Google</button>
-    <p class="status" id="authMsg" role="alert"></p>
+    <p id="gateMsg">Loading…</p>
+    <button type="button" class="btn primary" id="signIn" hidden>Sign in with Google</button>
+    <button type="button" class="btn" id="gateSignOut" hidden>Sign out</button>
   </section>
 
-  <!-- Shown after sign-in -->
+  <!-- Shown once, if you still have assignments from the old personal calendar -->
+  <section class="panel banner" id="migrate" hidden>
+    <p id="migrateText"></p>
+    <div class="actions">
+      <button type="button" class="btn primary" id="moveShared">Add them for everyone</button>
+      <button type="button" class="btn" id="movePrivate">Add them just for me</button>
+    </div>
+    <p class="status" id="migrateStatus" role="status"></p>
+  </section>
+
   <div class="app" id="appShell" hidden>
     <section class="cal" aria-label="Month calendar">
       <div class="head">
@@ -194,17 +274,11 @@ details.more-fields .field{margin:10px 0 0}
           <button type="button" class="btn icon" id="prev" aria-label="Previous month">&larr;</button>
           <button type="button" class="btn" id="today">Today</button>
           <button type="button" class="btn icon" id="next" aria-label="Next month">&rarr;</button>
-          <button type="button" class="btn" id="clear">Clear month</button>
         </div>
       </div>
       <div class="sub">
         <span id="summary"></span>
         <div class="legend" id="legend" aria-label="Class colours"></div>
-      </div>
-      <div class="confirm" id="confirmBar" hidden>
-        <p id="confirmText"></p>
-        <button type="button" class="btn danger" id="confirmYes">Yes, clear them</button>
-        <button type="button" class="btn" id="confirmNo">Keep them</button>
       </div>
       <div class="dow" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
       <div class="grid" id="grid"></div>
@@ -236,6 +310,13 @@ details.more-fields .field{margin:10px 0 0}
           <input type="time" id="customTime">
         </div>
       </fieldset>
+      <fieldset class="field" id="visField">
+        <legend>Who can see it</legend>
+        <div class="pills">
+          <label class="pill time"><input type="radio" name="vis" value="shared" checked><span>Everyone</span></label>
+          <label class="pill time"><input type="radio" name="vis" value="private"><span>Just me</span></label>
+        </div>
+      </fieldset>
       <details class="more-fields" id="moreFields">
         <summary>Description and link (optional)</summary>
         <div class="field">
@@ -260,6 +341,12 @@ details.more-fields .field{margin:10px 0 0}
       <p class="empty" id="dayEmpty" hidden>Nothing due on this day.</p>
       <p class="store"><span id="who"></span><button type="button" class="del" id="signOut">Sign out</button></p>
     </section>
+
+    <section class="panel sched" aria-label="Weekly class schedule">
+      <h2>Weekly schedule</h2>
+      <p class="schednote">Block COMP 1 E, from the timetable for the week of Sep 14.<span class="wideonly"> Bars mark when assignments are due. Hours after 6 PM are squeezed.</span></p>
+      <div class="tt" id="tt"></div>
+    </section>
   </div>
 </div>
 
@@ -268,13 +355,15 @@ details.more-fields .field{margin:10px 0 0}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch }
+import { getFirestore, collection, doc, query, where, onSnapshot, getDocs,
+  setDoc, updateDoc, deleteDoc, deleteField, writeBatch }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const GROUP = 'main';   // everything shared lives under groups/main
 
 /* ---------- 2. Small helpers ---------- */
 const CLASSES = [
@@ -291,6 +380,7 @@ const $ = (id) => document.getElementById(id);
 const pad = (n) => (n < 10 ? '0' : '') + n;
 const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const parse = (s) => { const p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); };
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const classLabel = (id) => { const c = CLASSES.find((x) => x.id === id); return c ? c.label : id; };
 function fmtTime(t) {
   const h = +t.slice(0, 2), m = t.slice(3, 5);
@@ -307,9 +397,14 @@ function newId() { return 't' + Date.now().toString(36) + Math.random().toString
 const now = new Date();
 const todayStr = ymd(now);
 const state = { items: [], view: new Date(now.getFullYear(), now.getMonth(), 1), sel: todayStr };
-let uid = null;        // the signed-in user's id
-let unsubscribe = null; // stops the live Firestore listener
-let editId = null;     // id of the assignment being edited, if any
+let me = null;            // signed-in user's id
+let myName = '';          // their first name, shown to the group
+let members = [];         // [{ id, name }] everyone who has signed in
+let sharedMap = new Map(); // shared items, from one live query
+let mineMap = new Map();   // my own items (shared and private), from another
+let unsubs = [];           // functions that stop the live queries
+let editId = null;         // id of the assignment being edited
+let oldDocs = [];          // assignments from the old personal calendar
 
 function setStatus(msg) {
   $('status').textContent = msg || '';
@@ -317,44 +412,63 @@ function setStatus(msg) {
   if (msg) setStatus.t = setTimeout(() => { $('status').textContent = ''; }, 4000);
 }
 
-/* ---------- 3. Reading and writing Firestore ----------
-   Every assignment is its own document at: users/{uid}/assignments/{id} */
-const itemRef = (id) => doc(db, 'users', uid, 'assignments', id);
+/* ---------- 3. Firestore data ----------
+   groups/main/assignments/{id}  one document per assignment
+     shared: true  -> every member sees it
+     shared: false -> only the person who added it ("by") sees it
+     doneBy: { uid: true }  each person's own tick
+   groups/main/members/{uid}     { name } written by each person when they sign in */
+const itemsCol = () => collection(db, 'groups', GROUP, 'assignments');
+const itemRef = (id) => doc(db, 'groups', GROUP, 'assignments', id);
+const memberRef = (uid) => doc(db, 'groups', GROUP, 'members', uid);
 
 function cleanItem(id, d) {
+  const doneBy = {};
+  if (d.doneBy && typeof d.doneBy === 'object') {
+    Object.keys(d.doneBy).forEach((k) => { if (d.doneBy[k]) doneBy[k] = true; });
+  }
   return {
     id,
     name: String(d.name || ''),
     cls: String(d.cls || ''),
     date: String(d.date || ''),
     time: /^\d{2}:\d{2}$/.test(d.time || '') ? d.time : '23:59',
-    done: !!d.done,
     desc: typeof d.desc === 'string' ? d.desc : '',
-    link: typeof d.link === 'string' ? d.link : ''
+    link: typeof d.link === 'string' ? d.link : '',
+    shared: d.shared === true,
+    by: String(d.by || ''),
+    byName: String(d.byName || ''),
+    doneBy
   };
 }
-function saveError(e) { setStatus('Could not save: ' + (e.code || e.message)); }
-function saveItem(item) {
-  const { id, ...data } = item;          // the id is the document name, not a field
-  return setDoc(itemRef(id), data).catch(saveError);
+const visible = (i) => i.shared || i.by === me;
+const isDone = (i) => !!i.doneBy[me];
+function memberName(id, fallback) {
+  const m = members.find((x) => x.id === id);
+  return m ? m.name : (fallback || 'Someone');
 }
-function removeItem(id) { return deleteDoc(itemRef(id)).catch(saveError); }
+function saveError(e) { setStatus('Could not save: ' + (e.code || e.message)); }
 
-/* ---------- 4. Calendar logic ---------- */
+function mergeItems() {
+  const all = new Map(sharedMap);
+  mineMap.forEach((v, k) => all.set(k, v));
+  state.items = Array.from(all.values()).filter((i) => isDate(i.date) && i.name);
+  render();
+}
+
+/* ---------- 4. Month calendar and day list ---------- */
 function sortItems(a, b) {
   return a.date < b.date ? -1 : a.date > b.date ? 1 :
     a.time < b.time ? -1 : a.time > b.time ? 1 :
     a.name.localeCompare(b.name);
 }
 const monthKey = () => state.view.getFullYear() + '-' + pad(state.view.getMonth() + 1);
-const monthName = () => state.view.toLocaleDateString(LOCALE, { month: 'long' });
 
 function setView(d) {
   state.view = new Date(d.getFullYear(), d.getMonth(), 1);
   const inMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth();
   state.sel = inMonth ? todayStr : ymd(state.view);
   $('date').value = state.sel;
-  closeConfirm();
   render();
 }
 function select(dateStr) {
@@ -363,25 +477,38 @@ function select(dateStr) {
   const d = parse(dateStr);
   if (d.getMonth() !== state.view.getMonth() || d.getFullYear() !== state.view.getFullYear()) {
     state.view = new Date(d.getFullYear(), d.getMonth(), 1);
-    closeConfirm();
   }
   render();
+}
+
+/* Initials for each group member, filled in when they have finished */
+function whoRow(i) {
+  const row = el('div', 'who');
+  let n = 0;
+  members.forEach((m) => {
+    const on = !!i.doneBy[m.id];
+    if (on) n++;
+    const a = el('span', 'av' + (on ? ' on' : ''), m.name.charAt(0).toUpperCase());
+    a.title = m.name + (m.id === me ? ' (you)' : '') + (on ? ': done' : ': not done yet');
+    row.appendChild(a);
+  });
+  row.appendChild(el('small', null, n + ' of ' + members.length + ' done'));
+  return row;
 }
 
 function render() {
   const key = monthKey();
   $('monthTitle').textContent = state.view.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
 
+  const items = state.items.filter(visible);
   const byDate = {};
-  state.items.slice().sort(sortItems).forEach((i) => { (byDate[i.date] = byDate[i.date] || []).push(i); });
+  items.slice().sort(sortItems).forEach((i) => { (byDate[i.date] = byDate[i.date] || []).push(i); });
 
-  const monthItems = state.items.filter((i) => i.date.slice(0, 7) === key);
-  const open = monthItems.filter((i) => !i.done).length;
+  const monthItems = items.filter((i) => i.date.slice(0, 7) === key);
+  const open = monthItems.filter((i) => !isDone(i)).length;
   $('summary').textContent = monthItems.length
-    ? monthItems.length + (monthItems.length === 1 ? ' assignment' : ' assignments') + ' this month, ' + open + ' still open'
+    ? monthItems.length + (monthItems.length === 1 ? ' assignment' : ' assignments') + ' this month, ' + open + ' still open for you'
     : 'No assignments this month';
-  $('clear').textContent = 'Clear ' + monthName();
-  $('clear').disabled = monthItems.length === 0;
 
   const grid = $('grid');
   grid.textContent = '';
@@ -406,17 +533,17 @@ function render() {
 
     const chips = el('span', 'chips');
     list.slice(0, 3).forEach((i) => {
-      const c = el('span', 'chip k-' + i.cls + (i.done ? ' done' : ''));
+      const c = el('span', 'chip k-' + i.cls + (isDone(i) ? ' done' : '') + (i.shared ? '' : ' priv'));
       c.appendChild(el('i', 'dot'));
       c.appendChild(el('span', 'n', i.name));
-      c.title = classLabel(i.cls) + ': ' + i.name + ' at ' + fmtTime(i.time);
+      c.title = classLabel(i.cls) + ': ' + i.name + ' at ' + fmtTime(i.time) + (i.shared ? '' : ' (just you)');
       chips.appendChild(c);
     });
     if (list.length > 3) chips.appendChild(el('span', 'more', '+' + (list.length - 3) + ' more'));
     cell.appendChild(chips);
 
     const dots = el('span', 'dots');
-    list.slice(0, 6).forEach((i) => dots.appendChild(el('i', 'dot k-' + i.cls + (i.done ? ' done' : ''))));
+    list.slice(0, 6).forEach((i) => dots.appendChild(el('i', 'dot k-' + i.cls + (isDone(i) ? ' done' : ''))));
     if (list.length > 6) dots.appendChild(el('small', null, '+'));
     cell.appendChild(dots);
     grid.appendChild(cell);
@@ -429,10 +556,10 @@ function render() {
   const dayItems = byDate[state.sel] || [];
   $('dayEmpty').hidden = dayItems.length > 0;
   dayItems.forEach((i) => {
-    const li = el('li', 'item k-' + i.cls + (i.done ? ' done' : ''));
+    const li = el('li', 'item k-' + i.cls + (isDone(i) ? ' done' : '') + (i.shared ? '' : ' priv'));
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.checked = i.done;
+    cb.checked = isDone(i);
     cb.setAttribute('data-id', i.id);
     cb.setAttribute('aria-label', 'Mark ' + i.name + ' as done');
     li.appendChild(cb);
@@ -442,7 +569,10 @@ function render() {
     const meta = el('div', 'meta');
     meta.appendChild(el('b', null, classLabel(i.cls)));
     meta.appendChild(el('span', 't', 'Due ' + fmtTime(i.time)));
+    if (!i.shared) meta.appendChild(el('span', 'tag', 'Just me'));
+    else meta.appendChild(el('span', null, 'Added by ' + (i.by === me ? 'you' : memberName(i.by, i.byName))));
     body.appendChild(meta);
+    if (i.shared) body.appendChild(whoRow(i));
     if (i.desc) body.appendChild(el('p', 'desc', i.desc));
     if (i.link && /^https?:\/\//i.test(i.link)) {
       const a = el('a', 'link', i.link.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
@@ -467,9 +597,145 @@ function render() {
     li.appendChild(btns);
     ul.appendChild(li);
   });
+  renderDue();
 }
 
-/* ---------- 5. One-time page setup ---------- */
+/* ---------- 5. Weekly class schedule ---------- */
+const SCHEDULE = [
+  { d: 1, s: '10:30', e: '13:20', cls: '1510', kind: 'Lab', name: 'Programming Methods', crn: '30389', room: 'DTC 665' },
+  { d: 2, s: '08:30', e: '10:20', cls: '1800', kind: 'Lecture', name: 'Projects 1', crn: '46874', room: 'DTC 581' },
+  { d: 2, s: '10:30', e: '12:20', cls: '1537', kind: 'Lab', name: 'Web Development 1', crn: '46871', room: 'DTC 665' },
+  { d: 2, s: '13:30', e: '15:20', cls: '1800', kind: 'Lab', name: 'Projects 1', crn: '46879', room: 'DTC 688' },
+  { d: 3, s: '08:30', e: '10:20', cls: '1116', kind: 'Lecture', name: 'Business Communications 1', crn: '44909', room: 'DTC 645' },
+  { d: 3, s: '12:30', e: '14:20', cls: '1116', kind: 'Lab', name: 'Business Communications 1', crn: '34591', room: 'DTC 645' },
+  { d: 4, s: '10:30', e: '12:20', cls: '1537', kind: 'Lecture', name: 'Web Development 1', crn: '46870', room: 'DTC 581' },
+  { d: 4, s: '13:30', e: '14:20', cls: '1100', kind: 'Lecture', name: 'CST Program Fundamentals', crn: '44910', room: 'DTC 645' },
+  { d: 4, s: '14:30', e: '17:20', cls: '1510', kind: 'Lecture', name: 'Programming Methods', crn: '44913', room: 'DTC 645' },
+  { d: 5, s: '08:30', e: '10:20', cls: '1113', kind: 'Lecture', name: 'Applied Mathematics', crn: '44912', room: 'DTC 581' },
+  { d: 5, s: '10:30', e: '12:20', cls: '1712', kind: 'Lab', name: 'Biz Analysis and System Design', crn: '45305', room: 'DTC 682' },
+  { d: 5, s: '13:30', e: '15:20', cls: '1113', kind: 'Lab', name: 'Applied Mathematics', crn: '32204', room: 'DTC 688' },
+  { d: 5, s: '15:30', e: '17:20', cls: '1712', kind: 'Lecture', name: 'Biz Analysis and System Design', crn: '45300', room: 'DTC 645' }
+];
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const T0 = 8 * 60, T1 = 18 * 60, SCALE = 1.15;  // class hours, 8:00 to 18:00
+const EVE_SCALE = 0.3;                          // 18:00 to 24:00, squeezed
+const CLASS_H = (T1 - T0) * SCALE;
+const EVE_H = (24 * 60 - T1) * EVE_SCALE;
+const TOTAL_H = CLASS_H + EVE_H;
+const BAR_H = 16, BAR_GAP = 2;
+const mins = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+const shortTime = (t) => ((+t.slice(0, 2)) % 12 || 12) + ':' + t.slice(3, 5);
+/* Minutes since midnight to a pixel offset down a day column */
+function timeToY(m) {
+  if (m <= T1) return Math.max(0, (m - T0) * SCALE);
+  return CLASS_H + (Math.min(m, 24 * 60) - T1) * EVE_SCALE;
+}
+/* Monday of the week to show: this week on weekdays, next week on weekends */
+function weekMonday() {
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const w = t.getDay();
+  const offset = w === 0 ? 1 : w === 6 ? 2 : 1 - w;
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate() + offset);
+}
+
+function renderSchedule() {
+  const tt = $('tt');
+  tt.textContent = '';
+  tt.style.setProperty('--hour', (60 * SCALE) + 'px');
+
+  const axis = el('div', 'tt-col tt-axis');
+  axis.setAttribute('aria-hidden', 'true');
+  axis.appendChild(el('div', 'tt-head'));
+  const ab = el('div', 'tt-body');
+  ab.style.height = TOTAL_H + 'px';
+  const ticks = [];
+  for (let hr = T0 / 60; hr <= T1 / 60; hr++) {
+    ticks.push([(hr % 12 || 12) + (hr < 12 ? 'a' : 'p'), (hr * 60 - T0) * SCALE]);
+  }
+  ticks.push(['9p', CLASS_H + 3 * 60 * EVE_SCALE]);
+  ticks.push(['12a', TOTAL_H]);
+  ticks.forEach((tk) => {
+    const lb = el('span', 'hr', tk[0]);
+    lb.style.top = tk[1] + 'px';
+    ab.appendChild(lb);
+  });
+  axis.appendChild(ab);
+  tt.appendChild(axis);
+
+  const dow = now.getDay();
+  const monday = weekMonday();
+  DAY_NAMES.forEach((name, idx) => {
+    const d = idx + 1;
+    const dayDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + idx);
+    const col = el('div', 'tt-col' + (dow === d ? ' today' : ''));
+    col.setAttribute('role', 'group');
+    col.setAttribute('aria-label', name);
+    const head = el('div', 'tt-head');
+    head.appendChild(el('span', null, name + ' ' + dayDate.getDate()));
+    col.appendChild(head);
+    const body = el('div', 'tt-body');
+    body.setAttribute('data-date', ymd(dayDate));
+    body.style.height = TOTAL_H + 'px';
+    const eve = el('div', 'eve');
+    eve.style.top = CLASS_H + 'px';
+    eve.style.height = EVE_H + 'px';
+    body.appendChild(eve);
+    SCHEDULE.filter((c) => c.d === d).forEach((c) => {
+      const b = el('div', 'blk k-' + c.cls);
+      b.style.top = ((mins(c.s) - T0) * SCALE) + 'px';
+      b.style.height = ((mins(c.e) - mins(c.s)) * SCALE - 2) + 'px';
+      b.title = classLabel(c.cls) + ' ' + c.name + ' (' + c.kind + '), CRN ' + c.crn;
+      b.appendChild(el('div', 't1', classLabel(c.cls) + ' ' + c.kind));
+      b.appendChild(el('div', 't2', c.room + ' · ' + shortTime(c.s) + '–' + shortTime(c.e)));
+      b.appendChild(el('div', 'extra', c.name + ' · CRN ' + c.crn));
+      body.appendChild(b);
+    });
+    col.appendChild(body);
+    tt.appendChild(col);
+  });
+}
+
+/* Draw a small bar at each assignment's due time. The bar's bottom edge sits on the
+   due time. Bars due at nearly the same time stack upward so they stay readable. */
+function renderDue() {
+  document.querySelectorAll('.tt-body[data-date]').forEach((body) => {
+    body.querySelectorAll('.dueb,.dueline').forEach((n) => n.remove());
+    const date = body.getAttribute('data-date');
+    const list = state.items.filter((i) => i.date === date && visible(i)).sort((a, b) =>
+      a.time < b.time ? 1 : a.time > b.time ? -1 : a.name.localeCompare(b.name));
+    let prevTop = Infinity, lastBar = null;
+    const hidden = [], seen = {};
+    list.forEach((i) => {
+      const y = timeToY(mins(i.time));
+      const key = Math.round(y);
+      if (!seen[key]) {
+        seen[key] = true;
+        const ln = el('div', 'dueline');
+        ln.style.top = y + 'px';
+        body.appendChild(ln);
+      }
+      let top = Math.min(y - BAR_H, prevTop - BAR_H - BAR_GAP);
+      if (top < 0) {
+        if (lastBar) { hidden.push(i); return; }
+        top = 0;
+      }
+      prevTop = top;
+      const bar = el('div', 'dueb k-' + i.cls + (isDone(i) ? ' done' : '') + (i.shared ? '' : ' priv'));
+      bar.style.top = top + 'px';
+      bar.appendChild(el('i', 'dot'));
+      bar.appendChild(el('span', 'n', i.name));
+      bar.title = classLabel(i.cls) + ': ' + i.name + ', due ' + fmtTime(i.time);
+      body.appendChild(bar);
+      lastBar = bar;
+    });
+    if (hidden.length && lastBar) {
+      lastBar.appendChild(el('span', 'more', '+' + hidden.length));
+      lastBar.title += ' (and ' + hidden.length + ' more: ' + hidden.map((i) => i.name).join(', ') + ')';
+    }
+  });
+}
+
+/* ---------- 6. One-time page setup ---------- */
 CLASSES.forEach((c, idx) => {
   const s = el('span', 'k-' + c.id);
   s.appendChild(el('i', 'dot'));
@@ -487,8 +753,14 @@ CLASSES.forEach((c, idx) => {
   lab.appendChild(sp);
   $('classPills').appendChild(lab);
 });
+{
+  const pv = el('span');
+  pv.appendChild(el('i', 'swatch'));
+  pv.appendChild(document.createTextNode('Just you'));
+  $('legend').appendChild(pv);
+}
 
-/* ---------- 6. Events ---------- */
+/* ---------- 7. Events ---------- */
 $('grid').addEventListener('click', (e) => {
   const b = e.target.closest('.cell');
   if (b) select(b.getAttribute('data-date'));
@@ -497,28 +769,11 @@ $('prev').addEventListener('click', () => setView(new Date(state.view.getFullYea
 $('next').addEventListener('click', () => setView(new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1)));
 $('today').addEventListener('click', () => setView(new Date(now.getFullYear(), now.getMonth(), 1)));
 
-function closeConfirm() { $('confirmBar').hidden = true; }
-$('clear').addEventListener('click', () => {
-  const n = state.items.filter((i) => i.date.slice(0, 7) === monthKey()).length;
-  if (!n) return;
-  $('confirmText').textContent = 'Delete all ' + n + (n === 1 ? ' assignment' : ' assignments') + ' in ' + monthName() + '? This cannot be undone.';
-  $('confirmBar').hidden = false;
-  $('confirmNo').focus();
-});
-$('confirmNo').addEventListener('click', () => { closeConfirm(); $('clear').focus(); });
-$('confirmYes').addEventListener('click', () => {
-  const key = monthKey();
-  const batch = writeBatch(db);   // delete the whole month in one go
-  state.items.filter((i) => i.date.slice(0, 7) === key).forEach((i) => batch.delete(itemRef(i.id)));
-  batch.commit().catch(saveError);
-  closeConfirm();
-  $('clear').focus();
-});
-
+// Tick or untick: only changes your own entry in doneBy
 $('dayList').addEventListener('change', (e) => {
   const id = e.target.getAttribute('data-id');
-  const item = state.items.find((i) => i.id === id);
-  if (item) saveItem({ ...item, done: e.target.checked });
+  if (!id || !me) return;
+  updateDoc(itemRef(id), { ['doneBy.' + me]: e.target.checked ? true : deleteField() }).catch(saveError);
 });
 $('dayList').addEventListener('click', (e) => {
   const eb = e.target.closest('[data-edit]');
@@ -527,11 +782,11 @@ $('dayList').addEventListener('click', (e) => {
   if (!b) return;
   const id = b.getAttribute('data-del');
   if (editId === id) cancelEdit();
-  removeItem(id);
+  deleteDoc(itemRef(id)).catch(saveError);
 });
 
 $('date').addEventListener('change', function () {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(this.value)) select(this.value);
+  if (isDate(this.value)) select(this.value);
 });
 function syncTime() {
   const custom = document.querySelector('input[name="tmode"]:checked').value === 'custom';
@@ -576,6 +831,10 @@ function startEdit(id) {
   $('desc').value = item.desc;
   $('link').value = item.link;
   $('moreFields').open = !!(item.desc || item.link);
+  // Only the person who added it can change who sees it
+  $('visField').hidden = item.by !== me;
+  const vr = document.querySelector('input[name="vis"][value="' + (item.shared ? 'shared' : 'private') + '"]');
+  if (vr) vr.checked = true;
   select(item.date);
   $('addForm').scrollIntoView({ block: 'nearest' });
   $('name').focus();
@@ -595,84 +854,191 @@ function cancelEdit() {
   $('customWrap').hidden = true;
   $('customTime').required = false;
   $('customTime').value = '';
+  $('visField').hidden = false;
+  document.querySelector('input[name="vis"][value="shared"]').checked = true;
 }
 $('cancelEdit').addEventListener('click', cancelEdit);
 
 $('addForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  if (!uid) return;
+  if (!me) return;
   const name = $('name').value.trim();
   const clsEl = document.querySelector('input[name="cls"]:checked');
   const date = $('date').value;
   const mode = document.querySelector('input[name="tmode"]:checked').value;
   const time = mode === 'custom' ? $('customTime').value : mode;
+  const shared = document.querySelector('input[name="vis"]:checked').value === 'shared';
   if (!name) { setStatus('Type a name for the assignment.'); $('name').focus(); return; }
   if (!clsEl) { setStatus('Pick a class.'); return; }
-  if (!date) { setStatus('Pick a due date.'); $('date').focus(); return; }
+  if (!isDate(date)) { setStatus('Pick a due date.'); $('date').focus(); return; }
   if (!time) { setStatus('Pick a custom time.'); $('customTime').focus(); return; }
   const desc = $('desc').value.trim();
   const rawLink = $('link').value.trim();
   const link = normalizeLink(rawLink);
   if (rawLink && !link) { $('moreFields').open = true; setStatus('That link does not look right.'); $('link').focus(); return; }
+  if (link.length > 500) { setStatus('That link is too long.'); return; }
 
   const shortDate = parse(date).toLocaleDateString(LOCALE, { month: 'short', day: 'numeric' });
   const base = { name, cls: clsEl.value, date, time, desc, link };
 
   if (editId) {
-    const old = state.items.find((i) => i.id === editId);
-    saveItem({ ...base, id: editId, done: old ? old.done : false });
+    const item = state.items.find((i) => i.id === editId);
+    const patch = { ...base };
+    if (item && item.by === me) patch.shared = shared;
+    updateDoc(itemRef(editId), patch).catch(saveError);
     cancelEdit();
     select(date);
     setStatus('Saved changes for ' + shortDate + '.');
     return;
   }
-  saveItem({ ...base, id: newId(), done: false });
+  setDoc(itemRef(newId()), { ...base, shared, by: me, byName: myName, doneBy: {} }).catch(saveError);
   $('name').value = '';
   $('desc').value = '';
   $('link').value = '';
   $('moreFields').open = false;
   select(date);
-  setStatus('Added to ' + shortDate + ' at ' + fmtTime(time) + '.');
+  setStatus('Added to ' + shortDate + ' at ' + fmtTime(time) + (shared ? ' for everyone.' : ', just for you.'));
   $('name').focus();
 });
 
-/* ---------- 7. Sign in, sign out, and live data ---------- */
+/* ---------- 8. Moving assignments from the old personal calendar ---------- */
+async function checkOldItems(uid) {
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'assignments'));
+    if (uid !== me || snap.empty) return;
+    oldDocs = snap.docs;
+    const n = oldDocs.length;
+    $('migrateText').textContent = 'You have ' + n + (n === 1 ? ' assignment' : ' assignments') +
+      ' from your old personal calendar. Move ' + (n === 1 ? 'it' : 'them') + ' into this one?';
+    $('migrateStatus').textContent = '';
+    $('migrate').hidden = false;
+  } catch (e) {
+    // No old data, or no access to it: nothing to move.
+  }
+}
+async function moveOld(shared) {
+  if (!oldDocs.length || !me) return;
+  $('moveShared').disabled = true;
+  $('movePrivate').disabled = true;
+  $('migrateStatus').textContent = 'Moving…';
+  try {
+    // Save in small groups: each group is one request, and the security rules
+    // limit how many lookups a single request can make
+    for (let i = 0; i < oldDocs.length; i += 10) {
+      const batch = writeBatch(db);
+      oldDocs.slice(i, i + 10).forEach((d) => {
+        const raw = d.data();
+        const it = cleanItem(d.id, raw);
+        if (isDate(it.date) && it.name) {
+          batch.set(itemRef(d.id), {
+            name: it.name.slice(0, 80), cls: it.cls, date: it.date, time: it.time,
+            desc: it.desc.slice(0, 500), link: it.link.slice(0, 500),
+            shared, by: me, byName: myName,
+            doneBy: raw.done ? { [me]: true } : {}
+          });
+        }
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    }
+    const n = oldDocs.length;
+    oldDocs = [];
+    $('migrate').hidden = true;
+    setStatus('Moved ' + n + (n === 1 ? ' assignment.' : ' assignments.'));
+  } catch (e) {
+    $('migrateStatus').textContent = 'Could not move them (' + (e.code || e.message) + '). Nothing was lost; try again.';
+  }
+  $('moveShared').disabled = false;
+  $('movePrivate').disabled = false;
+}
+$('moveShared').addEventListener('click', () => moveOld(true));
+$('movePrivate').addEventListener('click', () => moveOld(false));
+
+/* ---------- 9. Sign in, membership check, live data ---------- */
+function showGate(msg, signedIn) {
+  $('appShell').hidden = true;
+  $('migrate').hidden = true;
+  $('gate').hidden = false;
+  $('gateMsg').textContent = msg;
+  $('signIn').hidden = !!signedIn;
+  $('gateSignOut').hidden = !signedIn;
+}
+function stopListening() {
+  unsubs.forEach((u) => u());
+  unsubs = [];
+  sharedMap = new Map();
+  mineMap = new Map();
+  members = [];
+  oldDocs = [];
+  state.items = [];
+}
+function firstName(user) {
+  const full = (user.displayName || (user.email || 'Someone').split('@')[0]).trim();
+  return full.split(/\s+/)[0].slice(0, 60);
+}
+
 $('signIn').addEventListener('click', async () => {
-  $('authMsg').textContent = '';
   try {
     await signInWithPopup(auth, new GoogleAuthProvider());
   } catch (e) {
-    $('authMsg').textContent = 'Sign-in failed (' + (e.code || e.message) + ').';
+    $('gateMsg').textContent = 'Sign-in failed (' + (e.code || e.message) + ').';
   }
 });
 $('signOut').addEventListener('click', () => signOut(auth));
+$('gateSignOut').addEventListener('click', () => signOut(auth));
 
-onAuthStateChanged(auth, (user) => {
-  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+onAuthStateChanged(auth, async (user) => {
+  stopListening();
+  cancelEdit();
   if (!user) {
-    uid = null;
-    state.items = [];
-    $('appShell').hidden = true;
-    $('gate').hidden = false;
+    me = null;
+    showGate('Sign in with Google to see the group calendar.', false);
     return;
   }
-  uid = user.uid;
-  $('who').textContent = 'Signed in as ' + user.email;
+  me = user.uid;
+  myName = firstName(user);
+  showGate('Checking the group list…', true);
+
+  // Writing your name to the member list doubles as the membership check:
+  // the security rules only allow it if your email is on the group list.
+  try {
+    await setDoc(memberRef(user.uid), { name: myName });
+  } catch (e) {
+    if (me !== user.uid) return;
+    if (e.code === 'permission-denied') {
+      showGate('Your Google account (' + user.email + ') is not on the group list yet. ' +
+        'Ask Michael to add it, then reload this page.', true);
+    } else {
+      showGate('Could not reach the calendar (' + (e.code || e.message) + '). Check your connection and reload.', true);
+    }
+    return;
+  }
+  if (me !== user.uid) return; // signed out while we were checking
+
+  $('who').textContent = 'Signed in as ' + myName + ' (' + user.email + ')';
   $('gate').hidden = true;
   $('appShell').hidden = false;
-  // Listen to this user's assignments. This runs again every time the data changes.
-  unsubscribe = onSnapshot(
-    collection(db, 'users', uid, 'assignments'),
-    (snap) => {
-      state.items = snap.docs
-        .map((d) => cleanItem(d.id, d.data()))
-        .filter((i) => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
-      render();
-    },
-    (err) => setStatus('Could not load: ' + (err.code || err.message))
-  );
+
+  const onErr = (err) => setStatus('Could not load: ' + (err.code || err.message));
+  // Two live queries, because the rules only let you read shared items plus your own
+  unsubs.push(onSnapshot(query(itemsCol(), where('shared', '==', true)), (snap) => {
+    sharedMap = new Map(snap.docs.map((d) => [d.id, cleanItem(d.id, d.data())]));
+    mergeItems();
+  }, onErr));
+  unsubs.push(onSnapshot(query(itemsCol(), where('by', '==', user.uid)), (snap) => {
+    mineMap = new Map(snap.docs.map((d) => [d.id, cleanItem(d.id, d.data())]));
+    mergeItems();
+  }, onErr));
+  unsubs.push(onSnapshot(collection(db, 'groups', GROUP, 'members'), (snap) => {
+    members = snap.docs
+      .map((d) => ({ id: d.id, name: String((d.data() || {}).name || 'Someone') }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    render();
+  }, onErr));
+  checkOldItems(user.uid);
 });
 
+renderSchedule();
 $('date').value = state.sel;
 render();
 </script>

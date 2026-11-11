@@ -1,12 +1,85 @@
 rules_version = '2';
 
+// Shared group calendar rules.
+// Paste this into Firebase console > Firestore Database > Rules, then click Publish.
+//
+// Who is in the group is NOT written here. It lives in the Firestore document
+// groups/main, in a field called memberEmails (an array of lowercase Google
+// email addresses). You edit that list in the console, so no emails end up on GitHub.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isMember() {
+      return signedIn()
+        && request.auth.token.email.lower() in
+           get(/databases/$(database)/documents/groups/main).data.memberEmails;
+    }
+
+    // The shape every assignment must have
+    function validItem(d) {
+      return d.keys().hasAll(['name', 'cls', 'date', 'time', 'desc', 'link', 'shared', 'by', 'byName', 'doneBy'])
+        && d.keys().hasOnly(['name', 'cls', 'date', 'time', 'desc', 'link', 'shared', 'by', 'byName', 'doneBy'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 80
+        && d.cls is string && d.cls.size() <= 10
+        && d.date is string && d.date.size() == 10
+        && d.time is string && d.time.size() == 5
+        && d.desc is string && d.desc.size() <= 500
+        && d.link is string && d.link.size() <= 500
+        && d.shared is bool
+        && d.by is string
+        && d.byName is string && d.byName.size() <= 60
+        && d.doneBy is map;
+    }
+
+    // The group document: members can read it, only you (in the console) can change it
+    match /groups/main {
+      allow read: if isMember();
+    }
+
+    // Each member's first name, written by that member when they sign in
+    match /groups/main/members/{uid} {
+      allow read: if isMember();
+      allow write: if isMember()
+                   && request.auth.uid == uid
+                   && request.resource.data.keys().hasOnly(['name'])
+                   && request.resource.data.name is string
+                   && request.resource.data.name.size() <= 60;
+    }
+
+    match /groups/main/assignments/{id} {
+      // Shared items: every member. Private items: only the person who added them.
+      allow read: if isMember()
+                  && (resource.data.shared == true || resource.data.by == request.auth.uid);
+
+      // New items must be added in your own name, ticked by nobody but you
+      allow create: if isMember()
+                    && validItem(request.resource.data)
+                    && request.resource.data.by == request.auth.uid
+                    && request.resource.data.doneBy.keys().hasOnly([request.auth.uid]);
+
+      // Anyone in the group can edit shared items. Nobody can change who added an item,
+      // and you can only change your own tick. Only the person who added an item can
+      // make it private, and private items can only be changed by their owner.
+      allow update: if isMember()
+                    && validItem(request.resource.data)
+                    && request.resource.data.by == resource.data.by
+                    && request.resource.data.doneBy.diff(resource.data.doneBy).affectedKeys()
+                         .hasOnly([request.auth.uid])
+                    && (resource.data.by == request.auth.uid
+                        || (resource.data.shared == true && request.resource.data.shared == true));
+
+      // Shared items: any member can delete. Private items: only their owner.
+      allow delete: if isMember()
+                    && (resource.data.shared == true || resource.data.by == request.auth.uid);
+    }
+
+    // Old personal calendar data, kept only so the page can move it into the group
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == uid
-                         && request.auth.token.email == "YOUR_EMAIL@gmail.com"
-                         && request.auth.token.email_verified == true;
+      allow read, delete: if signedIn() && request.auth.uid == uid;
     }
   }
 }
